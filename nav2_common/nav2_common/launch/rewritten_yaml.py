@@ -21,6 +21,10 @@ import yaml
 import tempfile
 import launch
 
+class Dumper(yaml.Dumper):
+    def increase_indent(self, flow=False, *args, **kwargs):
+        return super().increase_indent(flow=flow, indentless=False)
+
 
 class DictItemReference:
     def __init__(self, dictionary, key):
@@ -83,7 +87,7 @@ class RewrittenYaml(launch.Substitution):
 
     def perform(self, context: launch.LaunchContext) -> Text:
         yaml_filename = launch.utilities.perform_substitutions(context, self.name)
-        rewritten_yaml = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        rewritten_yaml = tempfile.NamedTemporaryFile(mode='w', suffix=".yaml", delete=False)
         param_rewrites, keys_rewrites = self.resolve_rewrites(context)
         data = yaml.safe_load(open(yaml_filename, 'r'))
         self.substitute_params(data, param_rewrites)
@@ -92,7 +96,7 @@ class RewrittenYaml(launch.Substitution):
             root_key = launch.utilities.perform_substitutions(context, self.__root_key)
             if root_key:
                 data = {root_key: data}
-        yaml.dump(data, rewritten_yaml)
+        yaml.dump(data, rewritten_yaml, Dumper=Dumper)
         rewritten_yaml.close()
         return rewritten_yaml.name
 
